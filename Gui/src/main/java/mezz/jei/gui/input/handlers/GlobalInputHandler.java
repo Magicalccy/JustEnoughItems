@@ -1,5 +1,6 @@
 package mezz.jei.gui.input.handlers;
 
+import java.util.function.Consumer;
 import mezz.jei.common.Internal;
 import mezz.jei.common.input.IInternalKeyMappings;
 import mezz.jei.common.network.IConnectionToServer;
@@ -9,6 +10,8 @@ import mezz.jei.gui.input.UserInput;
 import mezz.jei.gui.input.IUserInputHandler;
 import net.minecraft.client.gui.screens.Screen;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 public class GlobalInputHandler implements IUserInputHandler {
@@ -20,38 +23,28 @@ public class GlobalInputHandler implements IUserInputHandler {
 
 	@Override
 	public Optional<IUserInputHandler> handleUserInput(Screen screen, UserInput input, IInternalKeyMappings keyBindings) {
-		if (input.is(keyBindings.getToggleOverlay())) {
-			if (!input.isSimulate()) {
-				toggleState.toggleOverlayEnabled();
-			}
-			return Optional.of(this);
-		}
-
-		if (input.is(keyBindings.getToggleBookmarkOverlay())) {
-			if (!input.isSimulate()) {
-				toggleState.toggleBookmarkEnabled();
-			}
-			return Optional.of(this);
-		}
-
-		if (input.is(keyBindings.getToggleCheatMode())) {
-			if (!input.isSimulate()) {
+		Map<Runnable, Boolean> actions = new HashMap<>() {{
+			put(toggleState::toggleOverlayEnabled, input.is(keyBindings.getToggleOverlay()));
+			put(toggleState::toggleBookmarkEnabled, input.is(keyBindings.getToggleBookmarkOverlay()));
+			put(() -> {
 				toggleState.toggleCheatItemsEnabled();
 				if (toggleState.isCheatItemsEnabled()) {
 					IConnectionToServer serverConnection = Internal.getServerConnection();
 					serverConnection.sendPacketToServer(new PacketRequestCheatPermission());
 				}
-			}
-			return Optional.of(this);
+			}, input.is(keyBindings.getToggleCheatMode()));
+			put(toggleState::toggleEditModeEnabled, input.is(keyBindings.getToggleEditMode()));
+		}};
+
+		Optional<Runnable> actionToPerform = actions.entrySet().stream()
+				.filter(Map.Entry::getValue)
+				.map(Map.Entry::getKey)
+				.findFirst();
+
+		if (!input.isSimulate()) {
+			actionToPerform.ifPresent(Runnable::run);
 		}
 
-		if (input.is(keyBindings.getToggleEditMode())) {
-			if (!input.isSimulate()) {
-				toggleState.toggleEditModeEnabled();
-			}
-			return Optional.of(this);
-		}
-
-		return Optional.empty();
+		return actionToPerform.map(action -> this);
 	}
 }

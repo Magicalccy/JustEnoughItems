@@ -30,6 +30,7 @@ public final class ConfigSerializer {
                Line #%s: "%s\"""".formatted(errorMessage, path, lineNumber, line);
     }
 
+    /*
     public static void load(Path path, @Unmodifiable List<ConfigCategory> categories) throws IOException {
         LOGGER.debug("Loading config file: {}", path);
         List<String> lines = Files.readAllLines(path);
@@ -109,6 +110,112 @@ public final class ConfigSerializer {
             }
         }
     }
+    */
+
+
+
+    public static void load(Path path, @Unmodifiable List<ConfigCategory> categories) throws IOException {
+        LOGGER.debug("Loading config file: {}", path);
+        List<String> lines = Files.readAllLines(path);
+
+        Map<String, ConfigCategory> categoriesMap = new LinkedHashMap<>();
+        for (ConfigCategory category : categories) {
+            categoriesMap.put(category.getName(), category);
+        }
+
+        ConfigCategory category = null;
+        for (int i = 0; i < lines.size(); i++) {
+            int lineNumber = i + 1;
+            String line = lines.get(i);
+            if (line.isBlank() || commentRegex.matcher(line).matches()) {
+                continue;
+            }
+            Matcher categoryMatcher = categoryRegex.matcher(line);
+            if (categoryMatcher.matches()) {
+                category = processCategory(path, lineNumber, line, categoriesMap, categoryMatcher);
+                continue;
+            }
+            if (category == null) {
+                logErrorExpectingCategory(path, lineNumber, line);
+                continue;
+            }
+
+            Matcher keyValueMatcher = keyValueRegex.matcher(line);
+            if (keyValueMatcher.matches()) {
+                processKeyValuePair(path, lineNumber, line, category, keyValueMatcher);
+            } else {
+                logErrorInvalidLine(path, lineNumber, line);
+            }
+        }
+    }
+
+    private static ConfigCategory processCategory(Path path, int lineNumber, String line,
+                                                  Map<String, ConfigCategory> categoriesMap,
+                                                  Matcher categoryMatcher) {
+        String categoryName = categoryMatcher.group("category");
+        ConfigCategory category = categoriesMap.get(categoryName);
+        if (category == null) {
+            LOGGER.error(getLineErrorString(path, lineNumber, line,
+                    """
+                    '[%s]' is not a valid category name.
+                    Valid names are: [%s]
+                    Skipping all values until the first valid category is declared."""
+                            .formatted(
+                                    categoryName,
+                                    String.join(", ", categoriesMap.keySet())
+                            )
+            ));
+        }
+        return category;
+    }
+
+    private static void logErrorExpectingCategory(Path path, int lineNumber, String line) {
+        LOGGER.error(getLineErrorString(path, lineNumber, line, """
+        Expected a '[category]' here.
+        Configs must start with a category before defining values.
+        Skipping all lines until the first valid category is declared."""));
+    }
+
+    private static void processKeyValuePair(Path path, int lineNumber, String line,
+                                            ConfigCategory category, Matcher keyValueMatcher) {
+        final String key = keyValueMatcher.group("key").trim();
+        final String value = keyValueMatcher.group("value").trim();
+        Optional<ConfigValue<?>> configValue = category.getConfigValue(key);
+        if (configValue.isEmpty()) {
+            LOGGER.error(getLineErrorString(path, lineNumber, line,
+                    """
+                    '%s' is not a valid config key for config category '%s'.
+                    Valid keys: [%s]
+                    Skipping this key."""
+                            .formatted(
+                                    key, category.getName(),
+                                    String.join(", ", category.getValueNames())
+                            )
+            ));
+        } else {
+            List<String> errors = configValue.get().setFromSerializedValue(value);
+            if (!errors.isEmpty()) {
+                String errorMessage = """
+                Encountered Errors when deserializing value '%s':
+                %s""".formatted(value, String.join("\n", errors));
+                LOGGER.error(getLineErrorString(path, lineNumber, line, errorMessage));
+            }
+        }
+    }
+
+    private static void logErrorInvalidLine(Path path, int lineNumber, String line) {
+        LOGGER.error(getLineErrorString(path, lineNumber, line,
+                """
+                    Encountered an invalid line.
+                    Every line in the config must be either:
+                    * a '[category]'
+                    * a 'key = value' pair
+                    * a '#'-prefixed comment"""
+        ));
+    }
+
+
+
 
     public static void save(Path path, List<ConfigCategory> categories) throws IOException {
         List<String> serialized = new ArrayList<>();

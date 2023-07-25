@@ -21,13 +21,7 @@ import net.minecraft.world.item.alchemy.Potions;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 public class BrewingRecipeMakerCommon {
     private static final Logger LOGGER = LogManager.getLogger();
@@ -47,14 +41,15 @@ public class BrewingRecipeMakerCommon {
 
         boolean foundNewPotions;
         do {
-            List<ItemStack> newPotions = getNewPotions(
-                recipeFactory,
-                potionRegistry,
-                knownPotions,
-                potionReagents,
-                vanillaOutputSupplier,
-                recipes
+            NewPotionsParams params = new NewPotionsParams(
+                    recipeFactory,
+                    potionRegistry,
+                    knownPotions,
+                    potionReagents,
+                    vanillaOutputSupplier,
+                    recipes
             );
+            List<ItemStack> newPotions = getNewPotions(params);
             foundNewPotions = !newPotions.isEmpty();
             knownPotions.addAll(newPotions);
         } while (foundNewPotions);
@@ -92,18 +87,11 @@ public class BrewingRecipeMakerCommon {
         return knownPotions;
     }
 
-    private static List<ItemStack> getNewPotions(
-        IVanillaRecipeFactory recipeFactory,
-        IPlatformRegistry<Potion> potionRegistry,
-        Collection<ItemStack> knownPotions,
-        List<ItemStack> potionReagents,
-        IVanillaPotionOutputSupplier vanillaOutputSupplier,
-        Collection<IJeiBrewingRecipe> recipes
-    ) {
+    private static List<ItemStack> getNewPotions(NewPotionsParams params) {
         List<ItemStack> newPotions = new ArrayList<>();
-        for (ItemStack potionInput : knownPotions) {
-            for (ItemStack potionReagent : potionReagents) {
-                ItemStack potionOutput = vanillaOutputSupplier.getOutput(potionInput.copy(), potionReagent);
+        for (ItemStack potionInput : params.knownPotions) {
+            for (ItemStack potionReagent : params.potionReagents) {
+                ItemStack potionOutput = params.vanillaOutputSupplier.getOutput(potionInput.copy(), potionReagent);
                 if (potionOutput.isEmpty()) {
                     continue;
                 }
@@ -115,17 +103,16 @@ public class BrewingRecipeMakerCommon {
                     }
 
                     Potion potionInputType = PotionUtils.getPotion(potionInput);
-                    ResourceLocation inputId = potionRegistry.getRegistryName(potionInputType).orElse(null);
-                    ResourceLocation outputId = potionRegistry.getRegistryName(potionOutputType).orElse(null);
-                    if (Objects.equals(inputId, outputId)) {
-                        continue;
-                    }
-                }
+                    Optional<ResourceLocation> inputId = params.potionRegistry.getRegistryName(potionInputType);
+                    Optional<ResourceLocation> outputId = params.potionRegistry.getRegistryName(potionOutputType);
 
-                IJeiBrewingRecipe recipe = recipeFactory.createBrewingRecipe(List.of(potionReagent), potionInput.copy(), potionOutput);
-                if (!recipes.contains(recipe)) {
-                    recipes.add(recipe);
-                    newPotions.add(potionOutput);
+                    if (!Objects.equals(inputId, outputId)) {
+                        if (params.knownPotions.contains(potionOutput)) {
+                            continue;
+                        }
+                        newPotions.add(potionOutput);
+                        params.recipes.add(params.recipeFactory.createBrewingRecipe(Collections.singletonList(potionInput), potionReagent, potionOutput));
+                    }
                 }
             }
         }
@@ -135,5 +122,31 @@ public class BrewingRecipeMakerCommon {
     @FunctionalInterface
     public interface IVanillaPotionOutputSupplier {
         ItemStack getOutput(ItemStack input, ItemStack ingredient);
+    }
+}
+
+
+class NewPotionsParams {
+    public IVanillaRecipeFactory recipeFactory;
+    public IPlatformRegistry<Potion> potionRegistry;
+    public IngredientSet<ItemStack> knownPotions;
+    public List<ItemStack> potionReagents;
+    public BrewingRecipeMakerCommon.IVanillaPotionOutputSupplier vanillaOutputSupplier;
+    public Set<IJeiBrewingRecipe> recipes;
+
+    public NewPotionsParams(
+            IVanillaRecipeFactory recipeFactory,
+            IPlatformRegistry<Potion> potionRegistry,
+            IngredientSet<ItemStack> knownPotions,
+            List<ItemStack> potionReagents,
+            BrewingRecipeMakerCommon.IVanillaPotionOutputSupplier vanillaOutputSupplier,
+            Set<IJeiBrewingRecipe> recipes
+    ) {
+        this.recipeFactory = recipeFactory;
+        this.potionRegistry = potionRegistry;
+        this.knownPotions = knownPotions;
+        this.potionReagents = potionReagents;
+        this.vanillaOutputSupplier = vanillaOutputSupplier;
+        this.recipes = recipes;
     }
 }

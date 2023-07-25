@@ -32,10 +32,10 @@ public class RecipeGuiLogic implements IRecipeGuiLogic {
 	private final IFocusFactory focusFactory;
 
 	public RecipeGuiLogic(
-		IRecipeManager recipeManager,
-		IRecipeTransferManager recipeTransferManager,
-		IRecipeLogicStateListener stateListener,
-		IFocusFactory focusFactory
+			IRecipeManager recipeManager,
+			IRecipeTransferManager recipeTransferManager,
+			IRecipeLogicStateListener stateListener,
+			IFocusFactory focusFactory
 	) {
 		this.recipeManager = recipeManager;
 		this.recipeTransferManager = recipeTransferManager;
@@ -120,9 +120,9 @@ public class RecipeGuiLogic implements IRecipeGuiLogic {
 	@Override
 	public boolean setCategoryFocus(List<RecipeType<?>> recipeTypes) {
 		List<IRecipeCategory<?>> recipeCategories = recipeManager.createRecipeCategoryLookup()
-			.limitTypes(recipeTypes)
-			.get()
-			.toList();
+				.limitTypes(recipeTypes)
+				.get()
+				.toList();
 
 		final IngredientLookupState state = IngredientLookupState.createWithCategories(recipeManager, focusFactory, recipeCategories);
 		if (state.getRecipeCategories().isEmpty()) {
@@ -144,7 +144,7 @@ public class RecipeGuiLogic implements IRecipeGuiLogic {
 	public Stream<ITypedIngredient<?>> getRecipeCatalysts(IRecipeCategory<?> recipeCategory) {
 		RecipeType<?> recipeType = recipeCategory.getRecipeType();
 		return recipeManager.createRecipeCatalystLookup(recipeType)
-			.get();
+				.get();
 	}
 
 	@Override
@@ -181,7 +181,7 @@ public class RecipeGuiLogic implements IRecipeGuiLogic {
 		for (int recipeIndex = firstRecipeIndex; recipeIndex < recipes.size() && recipeLayouts.size() < state.getRecipesPerPage(); recipeIndex++) {
 			T recipe = recipes.get(recipeIndex);
 			recipeManager.createRecipeLayoutDrawable(recipeCategory, recipe, state.getFocuses())
-				.ifPresentOrElse(recipeLayouts::add, () -> brokenRecipes.add(recipe));
+					.ifPresentOrElse(recipeLayouts::add, () -> brokenRecipes.add(recipe));
 		}
 
 		if (!brokenRecipes.isEmpty()) {
@@ -265,8 +265,8 @@ public class RecipeGuiLogic implements IRecipeGuiLogic {
 	@Override
 	public boolean hasAllCategories() {
 		long categoryCount = recipeManager.createRecipeCategoryLookup()
-			.get()
-			.count();
+				.get()
+				.count();
 
 		return state.getRecipeCategories().size() == categoryCount;
 	}

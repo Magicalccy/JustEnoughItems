@@ -16,7 +16,6 @@ public class TextFieldInputHandler implements IUserInputHandler {
 	public TextFieldInputHandler(GuiTextFieldFilter textFieldFilter) {
 		this.textFieldFilter = textFieldFilter;
 	}
-
 	@Override
 	public Optional<IUserInputHandler> handleUserInput(Screen screen, UserInput input, IInternalKeyMappings keyBindings) {
 		if (handleUserInputBoolean(input, keyBindings)) {
@@ -35,15 +34,15 @@ public class TextFieldInputHandler implements IUserInputHandler {
 		}
 
 		if (input.is(keyBindings.getHoveredClearSearchBar()) &&
-			textFieldFilter.isMouseOver(input.getMouseX(), input.getMouseY())
+				textFieldFilter.isMouseOver(input.getMouseX(), input.getMouseY())
 		) {
 			return handleHoveredClearSearchBar(input);
 		}
 
 		if (input.callVanilla(
-			textFieldFilter::isMouseOver,
-			textFieldFilter::mouseClicked,
-			textFieldFilter::keyPressed
+				textFieldFilter::isMouseOver,
+				textFieldFilter::mouseClicked,
+				textFieldFilter::keyPressed
 		)) {
 			handleSetFocused(input, true);
 			return true;
@@ -57,46 +56,29 @@ public class TextFieldInputHandler implements IUserInputHandler {
 			return handleNavigateHistory(input, TextHistory.Direction.NEXT);
 		}
 
-		// If we can handle this input as a typed char,
-		// treat it as handled to prevent other handlers from using it.
 		return textFieldFilter.canConsumeInput() && input.isAllowedChatCharacter();
 	}
 
 	private boolean handleSetFocused(UserInput input, boolean focused) {
-		if (textFieldFilter.isFocused() != focused) {
-			if (!input.isSimulate()) {
-				textFieldFilter.setFocused(focused);
-			}
-			return true;
-		}
-		return false;
-	}
-
-	private boolean handleHoveredClearSearchBar(UserInput input) {
-		if (!input.isSimulate()) {
+		textFieldFilter.setFocused(focused);
+		if (focused && !input.isSimulate()) {
 			textFieldFilter.setValue("");
-			textFieldFilter.setFocused(true);
 		}
 		return true;
 	}
 
 	private boolean handleNavigateHistory(UserInput input, TextHistory.Direction direction) {
-		if (textFieldFilter.isFocused()) {
-			return textFieldFilter.getHistory(direction)
-				.map(newText -> {
-					if (!input.isSimulate()) {
-						textFieldFilter.setValue(newText);
-					}
-					return true;
-				})
-				.orElse(false);
+		Optional<String> history = textFieldFilter.getHistory(direction);
+		if (history.isPresent() && !input.isSimulate()) {
+			textFieldFilter.setValue(history.get());
 		}
-
-		return false;
+		return true;
 	}
 
-	@Override
-	public void handleMouseClickedOut(InputConstants.Key input) {
-		textFieldFilter.setFocused(false);
+	private boolean handleHoveredClearSearchBar(UserInput input) {
+		if (!input.isSimulate()) {
+			textFieldFilter.clearAndFocus();
+		}
+		return true;
 	}
 }

@@ -31,7 +31,6 @@ public class GuiTextFieldFilter extends EditBox {
 	private @Nullable AbstractWidget previouslyFocusedWidget;
 
 	public GuiTextFieldFilter(Textures textures, BooleanSupplier filterEmpty) {
-		// TODO narrator string
 		super(Minecraft.getInstance().font, 0, 0, 0, 0, CommonComponents.EMPTY);
 		this.filterEmpty = filterEmpty;
 
@@ -72,6 +71,11 @@ public class GuiTextFieldFilter extends EditBox {
 
 	public IUserInputHandler createInputHandler() {
 		return new TextFieldInputHandler(this);
+	}
+
+	public void clearAndFocus() {
+		this.setValue("");
+		this.setFocused(true);
 	}
 
 	@Override

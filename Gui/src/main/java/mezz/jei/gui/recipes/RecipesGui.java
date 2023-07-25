@@ -120,7 +120,7 @@ public class RecipesGui extends Screen implements IRecipesGui, IRecipeFocusSourc
 		this.modIdHelper = modIdHelper;
 		this.clientConfig = clientConfig;
 		this.keyBindings = keyBindings;
-		this.logic = new RecipeGuiLogic(recipeManager, recipeTransferManager, this, focusFactory);
+		this.logic = (IRecipeGuiLogic) new RecipeGuiLogic(recipeManager, recipeTransferManager, this, focusFactory);
 		this.recipeCatalysts = new RecipeCatalysts(textures, recipeManager);
 		this.recipeGuiTabs = new RecipeGuiTabs(this.logic, textures, ingredientManager);
 		this.focusFactory = focusFactory;

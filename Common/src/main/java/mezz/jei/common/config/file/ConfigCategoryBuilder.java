@@ -55,3 +55,4 @@ public class ConfigCategoryBuilder implements IConfigCategoryBuilder {
         return new ConfigCategory(name, values);
     }
 }
+
